@@ -24,7 +24,7 @@
     </path>
 
     <path id="library.app.classpath">
-        <fileset dir="web/WEB-INF/lib" includes="*.jar"/>
+        <fileset dir="WebContent/WEB-INF/lib" includes="*.jar"/>
     </path>
 
 
