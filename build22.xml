@@ -57,7 +57,7 @@
     <target name="war" depends="build-project">
         <echo message="${ant.project.name}: ${ant.file}"/>
         <war destfile="build/dist/q-rest-user.war" webxml="WebContent/WEB-INF/web.xml">
-            <fileset dir="web"/>
+            <fileset dir="WebContent"/>
             <classes dir="build/classes"/>
         </war>
         <delete dir="build/classes"/>
