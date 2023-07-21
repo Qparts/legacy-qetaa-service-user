@@ -1,9 +1,6 @@
 package qetaa.service.user.restful;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import javax.ejb.EJB;
 import javax.ws.rs.Consumes;
@@ -42,6 +39,14 @@ import qetaa.service.user.model.security.WebApp;
 public class UserService {
 	@EJB
 	private DAO dao;
+
+	@ValidApp
+	@GET
+	@Path("test")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response test(){
+		return Response.status(200).entity("Received!").build();
+	}
 
 	@SecuredUser
 	@GET
@@ -320,6 +325,8 @@ public class UserService {
 					dao.updateNative(sql);
 				}
 			}
+			Properties  prop =  new Properties();
+			System.out.println("Number of props loaded: " +prop.entrySet().size());
 
 			dao.update(role);
 			return Response.status(200).build();
@@ -327,6 +334,7 @@ public class UserService {
 			return Response.status(500).build();
 		}
 	}
+
 
 	@ValidApp
 	@POST

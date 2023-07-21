@@ -27,7 +27,9 @@ public class ApplicationValidityAgent implements ContainerRequestFilter {
 		try{
 		// GET http autherization header from the request
 		String authHeader = requestContext.getHeaderString(HttpHeaders.AUTHORIZATION);
-		// check if http authorization header is present and formatted correctly
+		System.out.println("Checking Valid APP: " + authHeader);
+
+			// check if http authorization header is present and formatted correctly
 		if (authHeader == null || !authHeader.startsWith("Bearer")) {
 			requestContext.abortWith(Response.status(401).build());
 		} else {
