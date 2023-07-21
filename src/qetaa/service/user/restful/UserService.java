@@ -345,8 +345,15 @@ public class UserService {
 		try {
 			// verify web app and get it
 			WebApp webApp = getWebAppFromSecret(map.getAppSecret());
+			if(webApp != null) {
+				System.out.println("WebApp is " +  webApp.getAppName());
+			} else  {
+				System.out.println("Web App is  null");
+			}
 			// get password
 			String hashed = Helper.cypher(map.getCode());
+			System.out.println("hashed password  is "  + hashed);
+			System.out.println("Username is " + map.getUsername());
 			User user = dao.findThreeConditions(User.class, "status", "username", "password", 'A', map.getUsername(),
 					hashed);
 			if (user != null) {
@@ -361,6 +368,7 @@ public class UserService {
 				holder.setToken(token);
 				return Response.status(200).entity(holder).build();
 			} else {
+				System.out.println("user is null "+ user == null);
 				throw new Exception();
 			}
 		} catch (Exception ex) {
