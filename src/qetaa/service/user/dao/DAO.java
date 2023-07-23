@@ -293,9 +293,7 @@ public class DAO {
 	private void setParameter(Query q, String name, Object val) {
 		if (val instanceof Date) {
 			Date d = (Date) val;
-			Calendar c = Calendar.getInstance();
-			c.setTime(d);
-			q.setParameter(name, c, TemporalType.DATE);
+			q.setParameter(name, d, TemporalType.DATE);
 		} else if (val instanceof Calendar) {
 			Calendar c = (Calendar) val;
 			q.setParameter(name, c, TemporalType.DATE);
