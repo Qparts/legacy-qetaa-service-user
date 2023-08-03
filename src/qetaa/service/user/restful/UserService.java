@@ -1,6 +1,11 @@
 package qetaa.service.user.restful;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.ejb.EJB;
 import javax.ws.rs.Consumes;
@@ -25,6 +30,7 @@ import qetaa.service.user.filters.ValidApp;
 import qetaa.service.user.helpers.Helper;
 import qetaa.service.user.model.Activity;
 import qetaa.service.user.model.FinderMake;
+import qetaa.service.user.model.FinderScore;
 import qetaa.service.user.model.Role;
 import qetaa.service.user.model.RoleActivity;
 import qetaa.service.user.model.User;
@@ -36,22 +42,63 @@ import qetaa.service.user.model.security.AccessToken;
 import qetaa.service.user.model.security.WebApp;
 
 @Path("/")
+@Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
 public class UserService {
 	@EJB
 	private DAO dao;
-
-	@ValidApp
+	
+	@SecuredUser
 	@GET
-	@Path("test")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response test(){
-		return Response.status(200).entity("Received!").build();
+	@Path("current-score/finder/{user-id}")
+	public Response getFinderScore(@PathParam(value="user-id") Integer userId) {
+		try {
+			Calendar c = Calendar.getInstance();
+			int year = c.get(Calendar.YEAR);
+			int month = c.get(Calendar.MONTH);
+			String jpql = "select sum(b.score) from FinderScore b where b.userId = :value0 and b.created between :value1 and :value2 and b.score > :value3";
+			Long pos = dao.findJPQLParams(Long.class, jpql, userId, Helper.getDateStartOfMonth(year, month), Helper.getDateEndOfMonth(year, month), 0);
+			jpql = "select sum(b.score) from FinderScore b where b.userId = :value0 and b.created between :value1 and :value2 and b.score < : value3";
+			Long neg = dao.findJPQLParams(Long.class, jpql, userId, Helper.getDateStartOfMonth(year, month), Helper.getDateEndOfMonth(year, month), 0);
+			Map<String,Long> map = new HashMap<String,Long>();
+			map.put("positive", pos == null ? 0 : pos);
+			map.put("negative", neg == null ? 0 : neg);
+			return Response.status(200).entity(map).build();
+		}catch(Exception ex) {
+			ex.printStackTrace();
+			return Response.status(500).build();
+		}
 	}
-
+	
+	@SecuredUser
+	@POST
+	@Path("finder-score")
+	public Response createFinderScore(Map<String,Object> map) {
+		try {
+			Long cartId = ((Number) map.get("cartId")).longValue();
+			Long quotationResponseId = ((Number) map.get("quotationResponseId")).longValue();
+			Integer score = ((Number) map.get("score")).intValue();
+			Integer userId = ((Number) map.get("userId")).intValue();
+			String stage = (String) map.get("stage");
+			String desc = (String) map.get("desc");
+			FinderScore fc = new FinderScore();
+			fc.setCartId(cartId);
+			fc.setCreated(new Date());
+			fc.setDesc(desc);
+			fc.setQuotationResponseId(quotationResponseId == 0 ? null : quotationResponseId);
+			fc.setScore(score);
+			fc.setStage(stage);
+			fc.setUserId(userId);
+			dao.persist(fc);
+			return Response.status(201).build();
+		}catch(Exception ex) {
+			return Response.status(500).build();
+		}
+	}
+	
 	@SecuredUser
 	@GET
 	@Path("finder-ids/make/{param}")
-	@Produces(MediaType.APPLICATION_JSON)
 	public Response getFinderIds(@PathParam(value = "param") int makeId) {
 		try {
 			String jpql = "select b.id from User b where b.id in ("
@@ -69,7 +116,7 @@ public class UserService {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getFinderMakes(@PathParam(value = "param") int finderId) {
 		try {
-			String jpql = "select b.makeId from FinderMake b where b.user.id = :value0";
+			String jpql = "select b.makeId from FinderMake b where b.user.id = :value0 order by b.created asc";
 			List<Integer> makeIds = dao.getJPQLParams(Integer.class, jpql, finderId);
 			return Response.status(200).entity(makeIds).build();
 		} catch (Exception ex) {
@@ -157,7 +204,7 @@ public class UserService {
 		try {
 			List<Role> roles = dao.get(Role.class);
 			for (Role role : roles) {
-				role.setActivityList(this.getRoleActivites(role));
+				role.setActivityList(this.getRoleActivities(role));
 			}
 			return Response.status(200).entity(roles).build();
 		} catch (Exception ex) {
@@ -173,7 +220,7 @@ public class UserService {
 		try {
 			List<Role> roles = dao.getCondition(Role.class, "status", 'A');
 			for (Role role : roles) {
-				role.setActivityList(this.getRoleActivites(role));
+				role.setActivityList(this.getRoleActivities(role));
 			}
 			return Response.status(200).entity(roles).build();
 		} catch (Exception ex) {
@@ -325,8 +372,6 @@ public class UserService {
 					dao.updateNative(sql);
 				}
 			}
-			Properties  prop =  new Properties();
-			System.out.println("Number of props loaded: " +prop.entrySet().size());
 
 			dao.update(role);
 			return Response.status(200).build();
@@ -334,8 +379,6 @@ public class UserService {
 			return Response.status(500).build();
 		}
 	}
-
-
 	@ValidApp
 	@POST
 	@Path("/login")
@@ -378,10 +421,13 @@ public class UserService {
 	private List<Role> getUserRoles(User user) {
 		String jpql = "select b.role from UserRole b where b.user = :value0";
 		List<Role> roles = dao.getJPQLParams(Role.class, jpql, user);
+		for(Role role : roles) {
+			role.setActivityList(getRoleActivities(role));
+		}
 		return roles;
 	}
 
-	private List<Activity> getRoleActivites(Role role) {
+	private List<Activity> getRoleActivities(Role role) {
 		List<Activity> allActs = dao.getOrderBy(Activity.class, "name");
 		for (Activity a : allActs) {
 			RoleActivity roleAct = dao.findTwoConditions(RoleActivity.class, "role", "activity", role, a);
@@ -392,11 +438,27 @@ public class UserService {
 		return allActs;
 	}
 
+	@POST
+	@Path("/match-token/ws")
+	public Response matchToken(Map<String, Object> map) {
+		try {
+			String token = ((String) map.get("token"));
+			Integer userId = ((Number) map.get("userId")).intValue();
+			String jpql = "select b from AccessToken b where b.userId = :value0 and b.status = :value1 and b.token = :value2 and b.expire > :value3";
+			List<AccessToken> l = dao.getJPQLParams(AccessToken.class, jpql, userId, 'A', token, new Date());
+			if (!l.isEmpty()) {
+				return Response.status(200).build();
+			} else {
+				throw new Exception();
+			}
+		}catch(Exception ex) {
+			return Response.status(403).build();// unauthorized
+		}
+	}
+	
 	@SecuredUser
 	@POST
 	@Path("/match-token")
-	@Produces(MediaType.APPLICATION_JSON)
-	@Consumes(MediaType.APPLICATION_JSON)
 	public Response matchToken(AccessMap usermap) {
 		try {
 			WebApp webApp = getWebAppFromSecret(usermap.getAppSecret());

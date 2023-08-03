@@ -1,6 +1,7 @@
 package qetaa.service.user.model;
 
 import java.io.Serializable;
+import java.util.Date;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -10,6 +11,8 @@ import javax.persistence.IdClass;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
 
 @Entity
 @Table(name="usr_finder_make")
@@ -24,7 +27,18 @@ public class FinderMake implements Serializable{
 	@Id
 	@Column(name="make_id")
 	private int makeId;
+	@Column(name="created")
+	@Temporal(TemporalType.TIMESTAMP)
+	private Date created;
 	
+	
+	
+	public Date getCreated() {
+		return created;
+	}
+	public void setCreated(Date created) {
+		this.created = created;
+	}
 	public User getUser() {
 		return user;
 	}
